@@ -10,7 +10,7 @@ while True:
     response = requests.get(API)
 
     # filename using seconds epoch
-    file_and_path = f'opensky/{str(int(time.time()))}.log'
+    file_and_path = f'data/opensky/{str(int(time.time()))}.log'
     file_and_path
 
     print(f'saving to {file_and_path}')
