@@ -1,0 +1,13 @@
+{
+    "version": 1,
+    "config": {
+        "edgeimpulse.com": {
+            "name": "SAIC Opensky: Ingest",
+            "type": "transform",
+            "description": "Ingest data from the opensky database into edge impulse",
+            "organizationId": 1192,
+            "operatesOn": "dataitem",
+            "id": 2559
+        }
+    }
+}
