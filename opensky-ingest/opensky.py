@@ -1,4 +1,5 @@
 # get and save opensky api data once per minute and save to log file with current seconds as filename
+import argparse
 import requests
 import os, time 
 
@@ -29,6 +30,6 @@ print(f'saving to {filename}')
 
 # write the data
 # use response.content for the raw bytes of the data
-f = open(os.path.join(args.out_directory, filename)), "w+")
+f = open(os.path.join(args.out_directory, filename), "w+")
 f.write(str(response.content))
 f.close()
