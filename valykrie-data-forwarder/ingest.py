@@ -9,9 +9,7 @@ import copy
 from kafka import KafkaConsumer
 import json
 
-# and upload the file
-
-def upload_sample(data, name, label):
+def upload_sample(data, name, label, hmac_key, api_key):
     '''Uploads an edge impulse forwarded data sample.
 
     `data` arg must be a dict in valid edge impulse Data Acquisition format:
@@ -26,11 +24,14 @@ def upload_sample(data, name, label):
     encoded = json.dumps(data)
 
     # sign message
-    signature = hmac.new(bytes(args.hmac_key, 'utf-8'), msg = encoded.encode('utf-8'), digestmod = hashlib.sha256).hexdigest()
+    signature = hmac.new(bytes(hmac_key, 'utf-8'), msg = encoded.encode('utf-8'), digestmod = hashlib.sha256).hexdigest()
 
     # set the signature again in the message, and encode again
     data['signature'] = signature
     encoded = json.dumps(data)
+
+    print('TRACE: attempting to upload file...')
+    print('DEBUG:', encoded) 
 
     res = requests.post(url='https://ingestion.edgeimpulse.com/api/training/data',
                         data=encoded,
@@ -38,7 +39,7 @@ def upload_sample(data, name, label):
                             'Content-Type': 'application/json',
                             'x-label': label,
                             'x-file-name': name,
-                            'x-api-key': API_KEY
+                            'x-api-key': api_key 
                         })
     if (res.status_code == 200):
         print('INFO: Uploaded file to Edge Impulse', res.status_code, res.content)
@@ -52,7 +53,7 @@ Captures streaming data from Tenjin kafka sources, and extracts user defined sen
 
 usage (uploads to saic example project):
 
-python3 ingest.py --api-key ei_1185b85996507965f24c77ad63225d0f4e9946ed913df02f35f866f2e588ba91 --hmac-key d29e07904ac5edde24a5b4a6fb113acf --data-keys speed --max-len 100000 --label-key groundtruth
+python3 ingest.py --kafka-topic geo-analytics-test --api-key ei_1185b85996507965f24c77ad63225d0f4e9946ed913df02f35f866f2e588ba91 --hmac-key d29e07904ac5edde24a5b4a6fb113acf --data-keys latitude longitude --max-len 1000 --timeout 10.0
 
 '''
 
@@ -65,7 +66,7 @@ parser.add_argument('--data-prefix', nargs='*', default=['properties'], help="pr
 parser.add_argument('--data-keys', nargs='+', required=True, help="keys (or set of keys, evaluated in order) used to access data from the kafka message. NOTE: currently all data keys must be grouped in the same prefix") 
 parser.add_argument('--max-len', type=int, required=True, help="maximum number of samples to aggregate before uploading") 
 parser.add_argument('--label-key', type=str, help="Optional key to use as the label, if present. NOTE: currently all label keys must be grouped with the data prefix") 
-
+parser.add_argument('--timeout', type=float, default=10.0, help="Optional timeout duration") 
 args, unknown = parser.parse_known_args()
 
 # empty signature (all zeros). HS256 gives 32 byte signature, and we encode in hex, so we need 64 characters here
@@ -82,7 +83,7 @@ data = {
         "device_name": "tenjin data stream",
         "device_type": "TENJIN",
         "interval_ms": args.sample_rate_ms,
-        "sensors": [{'name' : axis, 'units' : ''} for axis in args.data_keys],
+        "sensors": [{'name' : axis, 'units' : '-'} for axis in args.data_keys],
         "values": []
     }
 }
@@ -94,23 +95,22 @@ i = 0
 last_label = 'unknown'
 current_data = copy.deepcopy(data)
 
-timeout_duration = 10.0
-is_timeout = True
 # TODO(@dasch0) Since real data rate is ignored, this timeout implementation means samples may have lots of skew. Add sample interval calculation or estimation
-def timeout():
+def timeout_upload():
     global current_data
-    if (is_timeout):
-        threading.Timer(timeout_duration, timeout).start()
-        print(f"INFO: Timeout occured, no samples in {timeout_duration} seconds")
-        if len(current_data['payload']['values']) > 1: #
-            print(f"INFO: Uploading sample....")
-            upload_sample(current_data, args.kafka_topic, last_label)
-            i = 0
-            current_data = copy.deepcopy(data)
-timeout()
+    #if len(current_data['payload']['values']) > 1: #
+    print("INFO: Uploading sample....")
+    upload_sample(current_data, args.kafka_topic, last_label, args.hmac_key, args.api_key)
+    i = 0
+    current_data = copy.deepcopy(data)
 
+is_timeout = True
+timer = threading.Timer(args.timeout, timeout_upload)
+
+timer.start()
 # Infinitely loop waiting for producer messages
 for msg in consumer:
+    timer.cancel()
     # dict representation of json in kafka messagedata
     msg_json = json.loads(msg.value.decode('utf-8'))
 
@@ -132,7 +132,7 @@ for msg in consumer:
 
     if i > args.max_len:
         i = 0
-        upload_sample(current_data, args.kafka_topic, last_label)
+        upload_sample(current_data, args.kafka_topic, last_label, args.hmac_key, args.api_key)
         current_data = copy.deepcopy(data)
         continue
 
@@ -143,4 +143,6 @@ for msg in consumer:
     current_data['payload']['values'].append(row)
 
     i += 1
+
+    timer.cancel()
 
