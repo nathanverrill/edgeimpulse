@@ -1,0 +1,4 @@
+edge_impulse_linux == 1.0.6
+azure_iot_device == 2.11.0
+flask == 2.1.1
+pyngrok == 5.1.0
