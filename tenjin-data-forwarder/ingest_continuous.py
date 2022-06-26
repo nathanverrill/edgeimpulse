@@ -6,45 +6,10 @@ import time, hmac, hashlib, argparse, threading
 import requests
 import copy
 
+import ei
+
 from kafka import KafkaConsumer
 import json
-
-def upload_sample(data, name, label, hmac_key, api_key):
-    '''Uploads an edge impulse forwarded data sample.
-
-    `data` arg must be a dict in valid edge impulse Data Acquisition format:
-    https://docs.edgeimpulse.com/reference/data-ingestion/data-acquisition-format 
-
-    `name` is the filename for a sample. Duplicates are allowed as the sample is hashed in EI
-    `label` is the string label for the sample. Use 'unknown' if no label available
-
-    '''
-
-    # encode in JSON
-    encoded = json.dumps(data)
-
-    # sign message
-    signature = hmac.new(bytes(hmac_key, 'utf-8'), msg = encoded.encode('utf-8'), digestmod = hashlib.sha256).hexdigest()
-
-    # set the signature again in the message, and encode again
-    data['signature'] = signature
-    encoded = json.dumps(data)
-
-    print('TRACE: attempting to upload file...')
-    print('DEBUG:', encoded) 
-
-    res = requests.post(url='https://ingestion.edgeimpulse.com/api/training/data',
-                        data=encoded,
-                        headers={
-                            'Content-Type': 'application/json',
-                            'x-label': label,
-                            'x-file-name': name,
-                            'x-api-key': api_key 
-                        })
-    if (res.status_code == 200):
-        print('INFO: Uploaded file to Edge Impulse', res.status_code, res.content)
-    else:
-        print('ERROR: Failed to upload file to Edge Impulse', res.status_code, res.content)
 
 desc = '''
 Edge Impulse + Tenjin Data forwarder
@@ -100,7 +65,7 @@ def timeout_upload():
     global current_data
     #if len(current_data['payload']['values']) > 1: #
     print("INFO: Uploading sample....")
-    upload_sample(current_data, args.kafka_topic, last_label, args.hmac_key, args.api_key)
+    ei.upload_sample_json(current_data, args.kafka_topic, last_label, args.hmac_key, args.api_key)
     i = 0
     current_data = copy.deepcopy(data)
 
@@ -126,13 +91,13 @@ for msg in consumer:
         if label is not last_label:
             last_label = label
             i = 0
-            upload_sample(current_data, args.kafka_topic, last_label)
+            ei.upload_sample_json(current_data, args.kafka_topic, last_label)
             current_data = copy.deepcopy(data)
             continue
 
     if i > args.max_len:
         i = 0
-        upload_sample(current_data, args.kafka_topic, last_label, args.hmac_key, args.api_key)
+        ei.upload_sample_json(current_data, args.kafka_topic, last_label, args.hmac_key, args.api_key)
         current_data = copy.deepcopy(data)
         continue
 
