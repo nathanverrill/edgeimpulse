@@ -79,7 +79,7 @@ for msg in consumer:
     # dict representation of json in kafka messagedata
     msg_json = json.loads(msg.value.decode('utf-8'))
 
-    print(msg_json)
+    #print(msg_json)
 
     # drill down through prefixes
     for prefix in args.data_prefix:
