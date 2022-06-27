@@ -27,7 +27,7 @@ parser.add_argument('--api-key', type=str, required=True, help="api key to edge 
 parser.add_argument('--sample-rate-ms', type=float, default=1.0, help="approximate sample in milliseconds, does not need to be exact")
 parser.add_argument('--data-prefix', nargs='*', default=['properties'], help="prefix key (or set of keys, evaluated in order) to reach the data entries in the kafka message")
 parser.add_argument('--data-keys', nargs='+', required=True, help="keys (or set of keys, evaluated in order) used to access data from the kafka message. NOTE: currently all data keys must be grouped in the same prefix") 
-parser.add_argument('--uuid', type=str, default='TENJIN Test Device', help="Optional unique identifier or ID for device. This should be unique if multiple instances of this script are pointing to the same project")
+parser.add_argument('--uuid', type=str, default='Ross Chair', help="Optional unique identifier or ID for device. This should be unique if multiple instances of this script are pointing to the same project")
 args, unknown = parser.parse_known_args()
 
 # empty signature (all zeros). HS256 gives 32 byte signature, and we encode in hex, so we need 64 characters here
@@ -60,11 +60,13 @@ def sample_cb(request_data: dict) -> tuple:
 
     current_data = copy.deepcopy(data)
 
-    start_time = time.time()
-    duration = sample_request['length'] / 1000.0
-    while time.time() < start_time + duration:
-        messages = consumer.poll()
-        for msg in messages:
+    i = 0
+    # TODO: make number of samples configurable
+    SAMPLES = 100
+
+    for msg in consumer:
+
+        if i < SAMPLES:
             msg_json = json.loads(msg.value.decode('utf-8'))
 
             print('DEBUG: kafka recv=', msg_json)
@@ -73,14 +75,16 @@ def sample_cb(request_data: dict) -> tuple:
             for prefix in args.data_prefix:
                 msg_json = msg_json[prefix]
 
-            #TODO: Handle differing intervals between samples
             row = []
             for key in args.data_keys:
                 row.append(msg_json[key])
 
             current_data['payload']['values'].append(row)
 
-    return '', current_data
+            i += 1
+        
+        else:
+            return '', current_data
 
 def upload_cb(request_data: dict, sample_data) -> str:
     '''Callback to be injected into the edge impulse socket to upload samples from Tenjin
