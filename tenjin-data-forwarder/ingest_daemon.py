@@ -90,7 +90,7 @@ def upload_cb(request_data: dict, sample_data) -> str:
     # ei supports multiple sample data types, but right now we only care about json
     if type(sample_data) is not dict:
         err = 'ERROR: ingest_daemon.py upload_cb not implemented for data type:{}'.format(type(sample_data))
-        return ERROR
+        return err
 
     ei.upload_sample_json(sample_data, args.kafka_topic, sample_request['label'], sample_request['hmacKey'], args.api_key)
 
