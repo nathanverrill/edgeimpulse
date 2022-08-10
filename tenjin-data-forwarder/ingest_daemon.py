@@ -16,7 +16,11 @@ Service to steam data on user demand from Tenjin kafka sources, and extracts use
 
 usage (uploads to saic example project):
 
-python3 ingest_daemon.py --project-id 114576 --kafka-topic geo-analytics-test --kafka-url localhost:9092 --api-key ei_1185b85996507965f24c77ad63225d0f4e9946ed913df02f35f866f2e588ba91 --data-keys latitude longitude
+python3 ingest_daemon.py --project-id 114576 --kafka-topic adhoc --kafka-url localhost:9092 --api-key ei_1185b85996507965f24c77ad63225d0f4e9946ed913df02f35f866f2e588ba91 --data-keys latitude longitude
+
+python3 -m ingest_daemon.py --project-id 119522 --kafka-url localhost:9092 --api-key ei_df6c05852368a15730bb1b353283edd9428216d0fb708aa6 --sample-rate-ms 10000 --data-prefix properties --uuid NATHAN_M1 --kafka-topic adhoc --data-keys aZ aY aZ gX gY gZ mX mY mZ
+
+
 '''
 
 parser = argparse.ArgumentParser(description=desc)
