@@ -6,7 +6,7 @@ from edge_impulse_linux.runner import ImpulseRunner
 import io
 
 # get keys from https://studio.edgeimpulse.com/studio/106885, click keys on top
-API_KEY = 'ei_b3f541a0a1bcbf0606b98ee39ff2acb314d88da19f05f546'
+API_KEY = 'xxxxxx'
 
 runner = None
 
